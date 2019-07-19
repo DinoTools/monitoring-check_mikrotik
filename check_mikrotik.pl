@@ -154,29 +154,37 @@ sub check_power
             $mtxrHlCurrent
         ]
     );
-    my $voltage = $result->{$mtxrHlVoltage} / 10;
-    $mp->add_perfdata(
-        label     => 'voltage',
-        value     => $voltage,
-        uom       => ''
-    );
-    $mp->add_message(OK, 'Voltage: ' . $voltage . 'V');
+    my $voltage = $result->{$mtxrHlVoltage};
+    if ($voltage ne 'noSuchObject') {
+        $voltage /= 10;
+        $mp->add_perfdata(
+            label     => 'voltage',
+            value     => $voltage,
+            uom       => ''
+        );
+        $mp->add_message(OK, 'Voltage: ' . $voltage . 'V');
+    }
 
-    my $power_consumption = $result->{$mtxrHlPower} / 10;
-    $mp->add_perfdata(
-        label     => 'power-consumption',
-        value     => $power_consumption,
-        uom       => ''
-    );
-    $mp->add_message(OK, 'Power consumption: ' . $power_consumption . 'W');
+    my $power_consumption = $result->{$mtxrHlPower};
+    if ($power_consumption ne 'noSuchObject') {
+        $power_consumption /= 10;
+        $mp->add_perfdata(
+            label     => 'power-consumption',
+            value     => $power_consumption,
+            uom       => ''
+        );
+        $mp->add_message(OK, 'Power consumption: ' . $power_consumption . 'W');
+    }
     
     my $current = $result->{$mtxrHlCurrent};
-    $mp->add_perfdata(
-        label     => 'current',
-        value     => $current,
-        uom       => ''
-    );
-    $mp->add_message(OK, 'Current: ' . $current . 'mA');
+    if ($current ne 'noSuchObject') {
+        $mp->add_perfdata(
+            label     => 'current',
+            value     => $current,
+            uom       => ''
+        );
+        $mp->add_message(OK, 'Current: ' . $current . 'mA');
+    }
 }
 
 sub check_system
