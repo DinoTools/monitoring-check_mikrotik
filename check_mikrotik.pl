@@ -37,6 +37,7 @@ BEGIN {
     }
 }
 
+my %session_opts;
 my $parser = Pod::Text::Termcap->new (sentence => 0, width => 78);
 my $extra_doc = <<'END_MESSAGE';
 
@@ -53,9 +54,53 @@ my $mp = Monitoring::Plugin->new(
 );
 
 $mp->add_arg(
+    spec    => 'snmp-version=s',
+    help    => 'SNMP Version: 1, 2, 3 (Default: 2)',
+    default => '2'
+);
+
+$mp->add_arg(
     spec    => 'community|C=s',
     help    => 'Community string (Default: public)',
     default => 'public'
+);
+
+$mp->add_arg(
+    spec    => 'seclevel|L=s',
+    help    => 'One of "noAuthNoPriv", "authNoPriv" or "authPriv"',
+    default => 'noAuthNoPriv',
+);
+
+$mp->add_arg(
+    spec => 'secname|U=s',
+    help => 'Username for SNMPv3',
+);
+
+$mp->add_arg(
+    spec => 'context|c=s',
+    help => 'SNMPv3 context name (default is empty string)',
+);
+
+$mp->add_arg(
+    spec => 'authpass|A=s',
+    help => 'Authentication Password for SNMPv3',
+);
+
+$mp->add_arg(
+    spec    => 'authproto|a=s',
+    help    => 'SNMPv3 authentication protocol must be MD5 or SHA1 (Default: MD5)',
+    default => 'MD5',
+);
+
+$mp->add_arg(
+    spec => 'privpass|X=s',
+    help => 'SNMPv3 Privacy password',
+);
+
+$mp->add_arg(
+    spec    => 'privproto|P=s',
+    help    => 'SNMPv3 privacy protocol (DES or AES; default: DES)',
+    default => 'DES',
 );
 
 $mp->add_arg(
@@ -72,23 +117,10 @@ $mp->add_arg(
 
 $mp->getopts;
 
-if(@{$mp->opts->sensor} == 0 || grep(/^all$/, @{$mp->opts->sensor})) {
-    @sensors_enabled = @sensors_available;
-} else {
-    foreach my $name (@{$mp->opts->sensor}) {
-        if(!grep(/$name/, @sensors_available)) {
-            wrap_exit(UNKNOWN, sprintf('Unknown sensor type: %s', $name));
-        }
-    }
-    @sensors_enabled = @{$mp->opts->sensor};
-}
+parse_args();
 
 #Open SNMP Session
-my ($session, $error) = Net::SNMP->session(
-    -hostname => $mp->opts->hostname,
-    -version => 'snmpv2c',
-    -community => $mp->opts->community,
-);
+my ($session, $error) = Net::SNMP->session(%session_opts);
 
 if (!defined($session)) {
     wrap_exit(UNKNOWN, $error)
@@ -98,6 +130,78 @@ check();
 
 my ($code, $message) = $mp->check_messages();
 wrap_exit($code, $message . "\n" . join("\n", @g_long_message));
+
+sub parse_args
+{
+    my $snmp_version = $mp->opts->get('snmp-version');
+    my $seclevel = $mp->opts->seclevel;
+    my $secname = $mp->opts->secname;
+    my $authproto = $mp->opts->authproto;
+    my $authpass = $mp->opts->authpass;
+    my $privpass = $mp->opts->privpass;
+    my $privproto = $mp->opts->privproto;
+
+    %session_opts = (
+        -hostname   => $mp->opts->hostname,
+        -version    => $mp->opts->get('snmp-version'),
+    );
+
+    $session_opts{'-community'} = $mp->opts->community if (defined $mp->opts->community && $snmp_version =~ /[12]/);
+
+    if ($snmp_version =~ /3/ ) {
+        if (!defined $seclevel) {
+            wrap_exit(UNKNOWN, 'Security level is not defined');
+        }
+        unless ( grep /^$seclevel$/, qw(noAuthNoPriv authNoPriv authPriv) ) {
+            wrap_exit(UNKNOWN, 'Security level must be one of "noAuthNoPriv", "authNoPriv" or "authPriv"');
+        }
+
+        if (!defined $secname) {
+            wrap_exit(UNKNOWN, 'Security name is not defined');
+        }
+        $session_opts{'-username'} = $secname;
+
+        if ( $seclevel eq 'authNoPriv' || $seclevel eq 'authPriv' ) {
+            unless ( grep /^$authproto$/, qw(MD5 SHA1) ) {
+                wrap_exit(UNKNOWN, 'Authentication protocol must be one of "MD5" or "SHA1"');
+            }
+            $session_opts{'-authprotocol'} = $authproto;
+
+            if (!defined $authpass) {
+                wrap_exit(UNKNOWN, 'Authentication password/key is not defined');
+            }
+
+            if ($authpass =~ /^0x/ ) {
+                $session_opts{'-authkey'} = $authpass ;
+            } else {
+                $session_opts{'-authpassword'} = $authpass ;
+            }
+        }
+        if ($seclevel eq 'authPriv') {
+            if (! defined $privpass) {
+			    wrap_exit(UNKNOWN, 'Privacy passphrase/key is not defined');
+			}
+            if ($privpass =~ /^0x/ ) {
+                $session_opts{'-privkey'} = $privpass;
+            }else{
+                $session_opts{'-privpassword'} = $privpass;
+            }
+            $session_opts{'-privprotocol'} = $privproto;
+        }
+    }
+
+    if(@{$mp->opts->sensor} == 0 || grep(/^all$/, @{$mp->opts->sensor})) {
+        @sensors_enabled = @sensors_available;
+    } else {
+        foreach my $name (@{$mp->opts->sensor}) {
+            if(!grep(/$name/, @sensors_available)) {
+                wrap_exit(UNKNOWN, sprintf('Unknown sensor type: %s', $name));
+            }
+        }
+        @sensors_enabled = @{$mp->opts->sensor};
+    }
+}
+
 
 sub check
 {
