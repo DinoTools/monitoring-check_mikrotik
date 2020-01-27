@@ -413,7 +413,7 @@ sub check_temperature
         $processor_temperature /= 10.0;
         $mp->add_message(
             OK,
-            sprintf('Prozessor: %.1f°C', $processor_temperature)
+            sprintf('Processor: %.1f°C', $processor_temperature)
         );
         $mp->add_perfdata(
             label     => 'processor_temperature',
