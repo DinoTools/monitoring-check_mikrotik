@@ -231,6 +231,9 @@ sub check_fan
             $mtxrHlFanSpeed2
         ]
     );
+    if(!defined $result) {
+        wrap_exit(UNKNOWN, 'Unable to get information');
+    }
     my $active_fan = $result->{$mtxrHlActiveFan};
     $mp->add_message(OK, 'Active Fan: ' . $active_fan);
     
@@ -258,6 +261,9 @@ sub check_power
             $mtxrHlCurrent
         ]
     );
+    if(!defined $result) {
+        wrap_exit(UNKNOWN, 'Unable to get information');
+    }
     my $voltage = $result->{$mtxrHlVoltage};
     if ($voltage ne 'noSuchObject') {
         $voltage /= 10;
@@ -304,6 +310,9 @@ sub check_system
             $mtxrBoardName
         ]
     );
+    if(!defined $result) {
+        wrap_exit(UNKNOWN, 'Unable to get information');
+    }
     my $firmware_version = $result->{$mtxrFirmwareVersion};
     if ($firmware_version ne 'noSuchObject') {
       $mp->add_message(OK, 'Current Firmware: ' . $firmware_version);
