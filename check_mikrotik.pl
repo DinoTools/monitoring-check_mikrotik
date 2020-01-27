@@ -340,16 +340,20 @@ sub check_system
     }
 }
 
+
 sub check_temperature
 {
-    my $mtxrHlSensorTemperature = '1.3.6.1.4.1.14988.1.1.3.5.0';
+    my $mtxrHlSensorTemperature = '.1.3.6.1.4.1.14988.1.1.3.5.0';
     my $mtxrHlCpuTemperature = '.1.3.6.1.4.1.14988.1.1.3.6.0';
     my $mtxrHlBoardTemperature = '.1.3.6.1.4.1.14988.1.1.3.7.0';
     my $mtxrHlTemperature = '.1.3.6.1.4.1.14988.1.1.3.10.0';
     my $mtxrHlProcessorTemperature = '.1.3.6.1.4.1.14988.1.1.3.11.0';
     my $result = $session->get_request(
         -varbindlist => [
+            $mtxrHlSensorTemperature,
             $mtxrHlCpuTemperature,
+            $mtxrHlBoardTemperature,
+            $mtxrHlTemperature,
             $mtxrHlProcessorTemperature,
         ]
     );
@@ -363,6 +367,10 @@ sub check_temperature
             OK,
             sprintf('Sensor: %.1f°C', $sensor_temperature)
         );
+        $mp->add_perfdata(
+            label     => 'sensor_temperature',
+            value     => $sensor_temperature,
+        );
     }
     my $cpu_temperature = $result->{$mtxrHlCpuTemperature};
     if ($cpu_temperature ne 'noSuchObject') {
@@ -370,6 +378,10 @@ sub check_temperature
         $mp->add_message(
             OK,
             sprintf('CPU: %.1f°C', $cpu_temperature)
+        );
+        $mp->add_perfdata(
+            label     => 'cpu_temperature',
+            value     => $cpu_temperature,
         );
     }
     my $board_temperature = $result->{$mtxrHlBoardTemperature};
@@ -379,6 +391,10 @@ sub check_temperature
             OK,
             sprintf('Board: %.1f°C', $board_temperature)
         );
+        $mp->add_perfdata(
+            label     => 'board_temperature',
+            value     => $board_temperature,
+        );
     }
     my $env_temperature = $result->{$mtxrHlTemperature};
     if ($env_temperature ne 'noSuchObject') {
@@ -386,6 +402,10 @@ sub check_temperature
         $mp->add_message(
             OK,
             sprintf('Temperature: %.1f°C', $env_temperature)
+        );
+        $mp->add_perfdata(
+            label     => 'env_temperature',
+            value     => $env_temperature,
         );
     }
     my $processor_temperature = $result->{$mtxrHlProcessorTemperature};
@@ -395,8 +415,13 @@ sub check_temperature
             OK,
             sprintf('Prozessor: %.1f°C', $processor_temperature)
         );
+        $mp->add_perfdata(
+            label     => 'processor_temperature',
+            value     => $processor_temperature,
+        );
     }
 }
+
 
 sub wrap_add_message
 {
