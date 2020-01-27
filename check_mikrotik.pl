@@ -115,6 +115,23 @@ $mp->add_arg(
     default => []
 );
 
+$mp->add_arg(
+    spec => 'temperature-warn=s',
+    help => 'Warning temperature for all temperature sensors',
+);
+
+$mp->add_arg(
+    spec => 'temperature-crit=s',
+    help => 'Critical temperature for all temperautre sensors',
+);
+
+$mp->add_arg(
+    spec    => 'temperature-thresholds=s@',
+    help    => 'Temperature thresholds. Format: <name>;<warn>;<crit>',
+    default => []
+);
+
+
 $mp->getopts;
 
 parse_args();
@@ -348,6 +365,10 @@ sub check_temperature
     my $mtxrHlBoardTemperature = '.1.3.6.1.4.1.14988.1.1.3.7.0';
     my $mtxrHlTemperature = '.1.3.6.1.4.1.14988.1.1.3.10.0';
     my $mtxrHlProcessorTemperature = '.1.3.6.1.4.1.14988.1.1.3.11.0';
+
+    my $status = UNKNOWN;
+    my %thresholds;
+
     my $result = $session->get_request(
         -varbindlist => [
             $mtxrHlSensorTemperature,
@@ -363,65 +384,121 @@ sub check_temperature
     my $sensor_temperature = $result->{$mtxrHlSensorTemperature};
     if ($sensor_temperature ne 'noSuchObject') {
         $sensor_temperature /= 10.0;
+        %thresholds = get_temperature_threshold('sensor');
+        $status = $mp->check_threshold(
+            check    => $sensor_temperature,
+            %thresholds,
+        );
         $mp->add_message(
-            OK,
+            $status,
             sprintf('Sensor: %.1f°C', $sensor_temperature)
         );
         $mp->add_perfdata(
             label     => 'sensor_temperature',
             value     => $sensor_temperature,
+            %thresholds,
         );
     }
     my $cpu_temperature = $result->{$mtxrHlCpuTemperature};
     if ($cpu_temperature ne 'noSuchObject') {
         $cpu_temperature /= 10.0;
+        %thresholds = get_temperature_threshold('cpu');
+        $status = $mp->check_threshold(
+            check    => $cpu_temperature,
+            %thresholds,
+        );
         $mp->add_message(
-            OK,
+            $status,
             sprintf('CPU: %.1f°C', $cpu_temperature)
         );
         $mp->add_perfdata(
             label     => 'cpu_temperature',
             value     => $cpu_temperature,
+            %thresholds,
         );
     }
     my $board_temperature = $result->{$mtxrHlBoardTemperature};
     if ($board_temperature ne 'noSuchObject') {
         $board_temperature /= 10.0;
+        %thresholds = get_temperature_threshold('board');
+        $status = $mp->check_threshold(
+            check    => $board_temperature,
+            %thresholds,
+        );
         $mp->add_message(
-            OK,
+            $status,
             sprintf('Board: %.1f°C', $board_temperature)
         );
         $mp->add_perfdata(
             label     => 'board_temperature',
             value     => $board_temperature,
+            %thresholds,
         );
     }
     my $env_temperature = $result->{$mtxrHlTemperature};
     if ($env_temperature ne 'noSuchObject') {
         $env_temperature /= 10.0;
+        %thresholds = get_temperature_threshold('env');
+        $status = $mp->check_threshold(
+            check    => $env_temperature,
+            %thresholds,
+        );
         $mp->add_message(
-            OK,
+            $status,
             sprintf('Temperature: %.1f°C', $env_temperature)
         );
         $mp->add_perfdata(
             label     => 'env_temperature',
             value     => $env_temperature,
+            %thresholds,
         );
     }
     my $processor_temperature = $result->{$mtxrHlProcessorTemperature};
     if ($processor_temperature ne 'noSuchObject') {
         $processor_temperature /= 10.0;
+        %thresholds = get_temperature_threshold('processor');
+        $status = $mp->check_threshold(
+            check    => $processor_temperature,
+            %thresholds,
+        );
         $mp->add_message(
-            OK,
+            $status,
             sprintf('Processor: %.1f°C', $processor_temperature)
         );
         $mp->add_perfdata(
             label     => 'processor_temperature',
             value     => $processor_temperature,
+            %thresholds,
         );
+
+
     }
 }
 
+
+sub get_temperature_threshold
+{
+    my $name = shift;
+    my %thresholds = (
+        critical => $mp->opts->get('temperature-crit'),
+        warning  => $mp->opts->get('temperature-warn'),
+    );
+
+    foreach my $threshold (@{$mp->opts->get('temperature-thresholds')}) {
+        if($threshold =~ /^(\S+?)(;(\S*?)(;(\S*))?)?$/) {
+            if($1 eq $name) {
+                if(defined $3) {
+                    $thresholds{warning} = $3;
+                }
+                if(defined $5) {
+                    $thresholds{critical} = $5;
+                }
+            }
+        }
+    }
+
+    return %thresholds;
+}
 
 sub wrap_add_message
 {
