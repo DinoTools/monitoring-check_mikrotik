@@ -239,11 +239,21 @@ sub check_fan
     
     my $fan_speed1 = $result->{$mtxrHlFanSpeed1};
     if ($fan_speed1 ne 'noSuchObject') {
-      $mp->add_message(OK, 'Fan1: ' . $fan_speed1);
+        $mp->add_message(OK, 'Fan1: ' . $fan_speed1);
+        $mp->add_perfdata(
+            label     => 'fan1_speed',
+            value     => $fan_speed1,
+            uom       => ''
+        );
     }
     my $fan_speed2 = $result->{$mtxrHlFanSpeed2};
     if ($fan_speed2 ne 'noSuchObject') {
-      $mp->add_message(OK, 'Fan2: ' . $fan_speed2);
+        $mp->add_message(OK, 'Fan2: ' . $fan_speed2);
+        $mp->add_perfdata(
+            label     => 'fan2_speed',
+            value     => $fan_speed2,
+            uom       => ''
+        );
     }
 
 }
