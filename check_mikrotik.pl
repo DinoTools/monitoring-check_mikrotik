@@ -15,7 +15,7 @@ my $pkg_nagios_available = 0;
 my $pkg_monitoring_available = 0;
 my @g_long_message;
 my @sensors_enabled = ();
-my @sensors_available = ('fan', 'power', 'system');
+my @sensors_available = ('fan', 'power', 'system', 'temperature');
 
 BEGIN {
     eval {
@@ -214,6 +214,9 @@ sub check
     if (grep(/^system$/, @sensors_enabled)) {
         check_system();
     }
+    if (grep(/^temperature$/, @sensors_enabled)) {
+        check_temperature();
+    }
 }
 
 
@@ -334,6 +337,64 @@ sub check_system
     my $board_name = $result->{$mtxrBoardName};
     if ($board_name ne 'noSuchObject') {
       $mp->add_message(OK, 'Board: ' . $board_name);
+    }
+}
+
+sub check_temperature
+{
+    my $mtxrHlSensorTemperature = '1.3.6.1.4.1.14988.1.1.3.5.0';
+    my $mtxrHlCpuTemperature = '.1.3.6.1.4.1.14988.1.1.3.6.0';
+    my $mtxrHlBoardTemperature = '.1.3.6.1.4.1.14988.1.1.3.7.0';
+    my $mtxrHlTemperature = '.1.3.6.1.4.1.14988.1.1.3.10.0';
+    my $mtxrHlProcessorTemperature = '.1.3.6.1.4.1.14988.1.1.3.11.0';
+    my $result = $session->get_request(
+        -varbindlist => [
+            $mtxrHlCpuTemperature,
+            $mtxrHlProcessorTemperature,
+        ]
+    );
+    if(!defined $result) {
+        wrap_exit(UNKNOWN, 'Unable to get information');
+    }
+    my $sensor_temperature = $result->{$mtxrHlSensorTemperature};
+    if ($sensor_temperature ne 'noSuchObject') {
+        $sensor_temperature /= 10.0;
+        $mp->add_message(
+            OK,
+            sprintf('Sensor: %.1f°C', $sensor_temperature)
+        );
+    }
+    my $cpu_temperature = $result->{$mtxrHlCpuTemperature};
+    if ($cpu_temperature ne 'noSuchObject') {
+        $cpu_temperature /= 10.0;
+        $mp->add_message(
+            OK,
+            sprintf('CPU: %.1f°C', $cpu_temperature)
+        );
+    }
+    my $board_temperature = $result->{$mtxrHlBoardTemperature};
+    if ($board_temperature ne 'noSuchObject') {
+        $board_temperature /= 10.0;
+        $mp->add_message(
+            OK,
+            sprintf('Board: %.1f°C', $board_temperature)
+        );
+    }
+    my $env_temperature = $result->{$mtxrHlTemperature};
+    if ($env_temperature ne 'noSuchObject') {
+        $env_temperature /= 10.0;
+        $mp->add_message(
+            OK,
+            sprintf('Temperature: %.1f°C', $env_temperature)
+        );
+    }
+    my $processor_temperature = $result->{$mtxrHlProcessorTemperature};
+    if ($processor_temperature ne 'noSuchObject') {
+        $processor_temperature /= 10.0;
+        $mp->add_message(
+            OK,
+            sprintf('Prozessor: %.1f°C', $processor_temperature)
+        );
     }
 }
 
